@@ -26,9 +26,10 @@ hide_title: true
     <a style="font-style:italic;padding:5px;margin:5px;"  href="https://egghead.io/lessons/react-use-observable-objects-arrays-and-maps-to-store-state-in-mobx">Hosted on egghead.io</a>
 </details>
 
-Decorator that can be used on ES7- or TypeScript class properties to make them observable.
-The `@observable` can be used on instance fields and property getters.
-This offers fine-grained control on which parts of your object become observable.
+Decorator that can be used on ES7- or TypeScript class properties to make them
+observable. The `@observable` can be used on instance fields and property
+getters. This offers fine-grained control on which parts of your object become
+observable.
 
 ```javascript
 import { observable, computed } from "mobx"
@@ -43,5 +44,5 @@ class OrderLine {
 }
 ```
 
-If your environment doesn't support decorators or field initializers,
-use `decorate` instead (see [decorators](./modifiers.md) for details).
+If your environment doesn't support decorators or field initializers, use
+`decorate` instead (see [decorators](./modifiers.md) for details).

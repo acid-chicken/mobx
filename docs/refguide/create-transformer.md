@@ -12,27 +12,39 @@ Provided by the `mobx-utils` package.
 
 `createTransformer<A, B>(transformation: (value: A) => B, onCleanup?: (result: B, value?: A) => void): (value: A) => B`
 
-`createTransformer` turns a function (that should transform value `A` into another value `B`) into a reactive and memoizing function.
-In other words, if the `transformation` function computes B given a specific A, the same B will be returned for all other future invocations of the transformation with the same A.
-However, if A changes, the transformation will be re-applied so that B is updated accordingly.
-And last but not least, if nobody is using the transformation of a specific A anymore, its entry will be removed from the memoization table.
+`createTransformer` turns a function (that should transform value `A` into
+another value `B`) into a reactive and memoizing function. In other words, if
+the `transformation` function computes B given a specific A, the same B will be
+returned for all other future invocations of the transformation with the same A.
+However, if A changes, the transformation will be re-applied so that B is
+updated accordingly. And last but not least, if nobody is using the
+transformation of a specific A anymore, its entry will be removed from the
+memoization table.
 
-With `createTransformer` it is very easy to transform a complete data graph into another data graph.
-Transformation functions can be composed so that you can build a tree using lots of small transformations.
-The resulting data graph will never be stale, it will be kept in sync with the source by applying small patches to the result graph.
-This makes it very easy to achieve powerful patterns similar to sideways data loading, map-reduce, tracking state history using immutable data structures etc.
+With `createTransformer` it is very easy to transform a complete data graph into
+another data graph. Transformation functions can be composed so that you can
+build a tree using lots of small transformations. The resulting data graph will
+never be stale, it will be kept in sync with the source by applying small
+patches to the result graph. This makes it very easy to achieve powerful
+patterns similar to sideways data loading, map-reduce, tracking state history
+using immutable data structures etc.
 
-The optional `onCleanup` function can be used to get a notification when a transformation of an object is no longer needed.
-This can be used to dispose resources attached to the result object if needed.
+The optional `onCleanup` function can be used to get a notification when a
+transformation of an object is no longer needed. This can be used to dispose
+resources attached to the result object if needed.
 
 Always use transformations inside a reaction like `@observer` or `autorun`.
-Transformations will, like any other computed value, fall back to lazy evaluation if not observed by something, which sort of defeats their purpose.
+Transformations will, like any other computed value, fall back to lazy
+evaluation if not observed by something, which sort of defeats their purpose.
 
-This all might still be a bit vague, so here are two examples that explain this whole idea of transforming one data structure into another by using small, reactive functions:
+This all might still be a bit vague, so here are two examples that explain this
+whole idea of transforming one data structure into another by using small,
+reactive functions:
 
 ## Tracking mutable state using immutable, shared data structures.
 
-This example is taken from the [Reactive2015 conference demo](https://github.com/mobxjs/mobx-reactive2015-demo):
+This example is taken from the
+[Reactive2015 conference demo](https://github.com/mobxjs/mobx-reactive2015-demo):
 
 ```javascript
 /*
@@ -68,47 +80,66 @@ const serializeArrow = createTransformer(arrow => ({
 }))
 ```
 
-In this example the state is serialized by composing three different transformation functions.
-The autorunner triggers the serialization of the `store` object, which in turn serializes all boxes and arrows.
-Let's take closer look at the life of an imaginary example box#3.
+In this example the state is serialized by composing three different
+transformation functions. The autorunner triggers the serialization of the
+`store` object, which in turn serializes all boxes and arrows. Let's take closer
+look at the life of an imaginary example box#3.
 
-1. The first time box#3 is passed by `map` to `serializeBox`,
-   the serializeBox transformation is executed and an entry containing box#3 and its serialized representation is added to the internal memoization table of `serializeBox`.
-2. Imagine that another box is added to the `store.boxes` list.
-   This would cause the `serializeState` function to re-compute, resulting in a complete remapping of all the boxes.
-   However, all the invocations of `serializeBox` will now return their old values from the memoization tables since their transformation functions didn't (need to) run again.
-3. Secondly, if somebody changes a property of box#3 this will cause the application of the `serializeBox` to box#3 to re-compute, just like any other reactive function in MobX.
-   Since the transformation will now produce a new Json object based on box#3, all observers of that specific transformation will be forced to run again as well.
-   That's the `serializeState` transformation in this case.
-   `serializeState` will now produce a new value in turn and map all the boxes again. But except for box#3, all other boxes will be returned from the memoization table.
-4. Finally, if box#3 is removed from `store.boxes`, `serializeState` will compute again.
-   But since it will no longer be using the application of `serializeBox` to box#3,
-   that reactive function will go back to non-reactive mode.
-   This signals the memoization table that the entry can be removed so that it is ready for GC.
+1. The first time box#3 is passed by `map` to `serializeBox`, the serializeBox
+   transformation is executed and an entry containing box#3 and its serialized
+   representation is added to the internal memoization table of `serializeBox`.
+2. Imagine that another box is added to the `store.boxes` list. This would cause
+   the `serializeState` function to re-compute, resulting in a complete
+   remapping of all the boxes. However, all the invocations of `serializeBox`
+   will now return their old values from the memoization tables since their
+   transformation functions didn't (need to) run again.
+3. Secondly, if somebody changes a property of box#3 this will cause the
+   application of the `serializeBox` to box#3 to re-compute, just like any other
+   reactive function in MobX. Since the transformation will now produce a new
+   Json object based on box#3, all observers of that specific transformation
+   will be forced to run again as well. That's the `serializeState`
+   transformation in this case. `serializeState` will now produce a new value in
+   turn and map all the boxes again. But except for box#3, all other boxes will
+   be returned from the memoization table.
+4. Finally, if box#3 is removed from `store.boxes`, `serializeState` will
+   compute again. But since it will no longer be using the application of
+   `serializeBox` to box#3, that reactive function will go back to non-reactive
+   mode. This signals the memoization table that the entry can be removed so
+   that it is ready for GC.
 
-So effectively we have achieved state tracking using immutable, shared datas structures here.
-All boxes and arrows are mapped and reduced into single state tree.
-Each change will result in a new entry in the `states` array, but the different entries will share almost all of their box and arrow representations.
+So effectively we have achieved state tracking using immutable, shared datas
+structures here. All boxes and arrows are mapped and reduced into single state
+tree. Each change will result in a new entry in the `states` array, but the
+different entries will share almost all of their box and arrow representations.
 
 ## Transforming a datagraph into another reactive data graph
 
-Instead of returning plain values from a transformation function, it is also possible to return observable objects.
-This can be used to transform an observable data graph into a another observable data graph, which can be used to transform... you get the idea.
+Instead of returning plain values from a transformation function, it is also
+possible to return observable objects. This can be used to transform an
+observable data graph into a another observable data graph, which can be used to
+transform... you get the idea.
 
-Here is a small example that encodes a reactive file explorer that will update its representation upon each change.
-Data graphs that are built this way will in general react a lot faster and will consist of much more straight-forward code,
-compared to derived data graph that are updated using your own code. See the [performance tests](https://github.com/mobxjs/mobx/blob/3ea1f4af20a51a1cb30be3e4a55ec8f964a8c495/test/perf/transform-perf.js#L4) for some examples.
+Here is a small example that encodes a reactive file explorer that will update
+its representation upon each change. Data graphs that are built this way will in
+general react a lot faster and will consist of much more straight-forward code,
+compared to derived data graph that are updated using your own code. See the
+[performance tests](https://github.com/mobxjs/mobx/blob/3ea1f4af20a51a1cb30be3e4a55ec8f964a8c495/test/perf/transform-perf.js#L4)
+for some examples.
 
-Unlike the previous example, the `transformFolder` will only run once as long as a folder remains visible;
-the `DisplayFolder` objects track the associated `Folder` objects themselves.
+Unlike the previous example, the `transformFolder` will only run once as long as
+a folder remains visible; the `DisplayFolder` objects track the associated
+`Folder` objects themselves.
 
-In the following example all mutations to the `state` graph will be processed automatically.
-Some examples:
+In the following example all mutations to the `state` graph will be processed
+automatically. Some examples:
 
-1. Changing the name of a folder will update its own `path` property and the `path` property of all its descendants.
-2. Collapsing a folder will remove all descendant `DisplayFolders` from the tree.
+1. Changing the name of a folder will update its own `path` property and the
+   `path` property of all its descendants.
+2. Collapsing a folder will remove all descendant `DisplayFolders` from the
+   tree.
 3. Expanding a folder will restore them again.
-4. Setting a search filter will remove all nodes that do not match the filter, unless they have a descendant that matches the filter.
+4. Setting a search filter will remove all nodes that do not match the filter,
+   unless they have a descendant that matches the filter.
 5. Etc.
 
 ```javascript

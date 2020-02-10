@@ -19,12 +19,12 @@ hide_title: true
 
 `when(predicate: () => boolean, effect?: () => void, options?)`
 
-`when` observes & runs the given `predicate` until it returns true.
-Once that happens, the given `effect` is executed and the autorunner is disposed.
-The function returns a disposer to cancel the autorunner prematurely.
+`when` observes & runs the given `predicate` until it returns true. Once that
+happens, the given `effect` is executed and the autorunner is disposed. The
+function returns a disposer to cancel the autorunner prematurely.
 
-This function is really useful to dispose or cancel stuff in a reactive way.
-For example:
+This function is really useful to dispose or cancel stuff in a reactive way. For
+example:
 
 ```javascript
 class MyResource {
@@ -49,7 +49,8 @@ class MyResource {
 
 ## when-promise
 
-If there is no `effect` function provided, `when` will return a `Promise`. This combines nicely with `async / await`
+If there is no `effect` function provided, `when` will return a `Promise`. This
+combines nicely with `async / await`
 
 ```javascript
 async function() {
