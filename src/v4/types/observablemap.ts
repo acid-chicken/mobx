@@ -10,8 +10,8 @@ import {
     IInterceptable,
     IListenable,
     ObservableValue,
-    IObservableArray,
-    ObservableArray,
+    checkIfStateModificationsAreAllowed,
+    createAtom,
     referenceEnhancer,
     IEnhancer,
     deepEnhancer,
@@ -24,7 +24,6 @@ import {
     notifyListeners,
     spyReportEnd,
     globalState,
-    iteratorSymbol,
     toStringTagSymbol,
     makeIterable,
     untracked,
@@ -33,7 +32,9 @@ import {
     registerInterceptor,
     declareIterator,
     onBecomeUnobserved,
-    convertToMap
+    convertToMap,
+    iteratorToArray,
+    forOf
 } from "../internal"
 
 export interface IKeyValueMap<V = any> {
@@ -83,9 +84,7 @@ export class ObservableMap<K = any, V = any>
     $mobx = ObservableMapMarker
     private _data: Map<K, ObservableValue<V>>
     private _hasMap: Map<K, ObservableValue<boolean>> // hasMap, not hashMap >-).
-    private _keys: IObservableArray<K> = <any>(
-        new ObservableArray(undefined, referenceEnhancer, `${this.name}.keys()`, true)
-    )
+    private _keysAtom = createAtom(`${this.name}.keys()`)
     interceptors
     changeListeners
     dehancer: any;
@@ -153,6 +152,7 @@ export class ObservableMap<K = any, V = any>
     }
 
     delete(key: K): boolean {
+        checkIfStateModificationsAreAllowed(this._keysAtom)
         if (hasInterceptors(this)) {
             const change = interceptChange<IMapWillChange<K, V>>(this, {
                 type: "delete",
@@ -176,7 +176,7 @@ export class ObservableMap<K = any, V = any>
 
             if (notifySpy) spyReportStart({ ...change, name: this.name, key })
             transaction(() => {
-                this._keys.remove(key)
+                this._keysAtom.reportChanged()
                 this._updateHasMapEntry(key, false)
                 const observable = this._data.get(key)!
                 observable.setNewValue(undefined as any)
@@ -220,6 +220,7 @@ export class ObservableMap<K = any, V = any>
     }
 
     private _addValue(key: K, newValue: V) {
+        checkIfStateModificationsAreAllowed(this._keysAtom)
         transaction(() => {
             const observable = new ObservableValue(
                 newValue,
@@ -230,7 +231,7 @@ export class ObservableMap<K = any, V = any>
             this._data.set(key, observable)
             newValue = (observable as any).value // value might have been changed
             this._updateHasMapEntry(key, true)
-            this._keys.push(key)
+            this._keysAtom.reportChanged()
         })
         const notifySpy = isSpyEnabled()
         const notify = hasListeners(this)
@@ -261,16 +262,18 @@ export class ObservableMap<K = any, V = any>
     }
 
     keys(): IterableIterator<K> {
-        return (this._keys[iteratorSymbol()] as any)()
+        this._keysAtom.reportObserved()
+        return this._data.keys()
     }
 
     values(): IterableIterator<V> {
         const self = this
         let nextIndex = 0
+        const keys = iteratorToArray(this.keys())
         return makeIterable({
             next() {
-                return nextIndex < self._keys.length
-                    ? { value: self.get(self._keys[nextIndex++])!, done: false }
+                return nextIndex < keys.length
+                    ? { value: self.get(keys[nextIndex++])!, done: false }
                     : { value: undefined as any, done: true }
             }
         })
@@ -279,10 +282,11 @@ export class ObservableMap<K = any, V = any>
     entries(): IterableIterator<IMapEntry<K, V>> {
         const self = this
         let nextIndex = 0
+        const keys = iteratorToArray(this.keys())
         return makeIterable({
             next: function() {
-                if (nextIndex < self._keys.length) {
-                    const key = self._keys[nextIndex++]
+                if (nextIndex < keys.length) {
+                    const key = keys[nextIndex++]
                     return {
                         value: [key, self.get(key)!] as [K, V],
                         done: false
@@ -294,7 +298,8 @@ export class ObservableMap<K = any, V = any>
     }
 
     forEach(callback: (value: V, key: K, object: Map<K, V>) => void, thisArg?) {
-        this._keys.forEach(key => callback.call(thisArg, this.get(key)!, key, this))
+        this._keysAtom.reportObserved()
+        this._data.forEach((_, key) => callback.call(thisArg, this.get(key)!, key, this))
     }
 
     /** Merge another object into this object, returns this. */
@@ -320,45 +325,94 @@ export class ObservableMap<K = any, V = any>
     clear() {
         transaction(() => {
             untracked(() => {
-                this._keys.slice().forEach(key => this.delete(key))
+                // Note we are concurrently reading/deleting the same keys
+                // forEach handles this properly
+                this._data.forEach((_, key) => this.delete(key))
             })
         })
     }
 
     replace(values: ObservableMap<K, V> | IKeyValueMap<V> | any): ObservableMap<K, V> {
+        // Implementation requirements:
+        // - respect ordering of replacement map
+        // - allow interceptors to run and potentially prevent individual operations
+        // - don't recreate observables that already exist in original map (so we don't destroy existing subscriptions)
+        // - don't _keysAtom.reportChanged if the keys of resulting map are indentical (order matters!)
+        // - note that result map may differ from replacement map due to the interceptors
         transaction(() => {
+            // Convert to map so we can do quick key lookups
             const replacementMap = convertToMap(values)
-            const oldKeys = this._keys
-            const newKeys: Array<any> = Array.from(replacementMap.keys())
-            let keysChanged = false
-            for (let i = 0; i < oldKeys.length; i++) {
-                const oldKey = oldKeys[i]
-                // key order change
-                if (oldKeys.length === newKeys.length && oldKey !== newKeys[i]) {
-                    keysChanged = true
+            const orderedData = new Map()
+            // Used for optimization
+            let keysReportChangedCalled = false
+            // Delete keys that don't exist in replacement map
+            // if the key deletion is prevented by interceptor
+            // add entry at the beginning of the result map
+            forOf(this._data.keys(), key => {
+                // Concurrently iterating/deleting keys
+                // iterator should handle this correctly
+                if (!replacementMap.has(key)) {
+                    const deleted = this.delete(key)
+                    // Was the key removed?
+                    if (deleted) {
+                        // _keysAtom.reportChanged() was already called
+                        keysReportChangedCalled = true
+                    } else {
+                        // Delete prevented by interceptor
+                        const value = this._data.get(key)
+                        orderedData.set(key, value)
+                    }
                 }
-                // deleted key
-                if (!replacementMap.has(oldKey)) {
-                    keysChanged = true
-                    this.delete(oldKey)
-                }
-            }
-            replacementMap.forEach((value, key) => {
-                // new key
-                if (!this._data.has(key)) {
-                    keysChanged = true
-                }
-                this.set(key, value)
             })
-            if (keysChanged) {
-                this._keys.replace(newKeys)
+            // Merge entries
+            forOf(replacementMap.entries(), ([key, value]) => {
+                // We will want to know whether a new key is added
+                const keyExisted = this._data.has(key)
+                // Add or update value
+                this.set(key, value)
+                // The addition could have been prevent by interceptor
+                if (this._data.has(key)) {
+                    // The update could have been prevented by interceptor
+                    // and also we want to preserve existing values
+                    // so use value from _data map (instead of replacement map)
+                    const value = this._data.get(key)
+                    orderedData.set(key, value)
+                    // Was a new key added?
+                    if (!keyExisted) {
+                        // _keysAtom.reportChanged() was already called
+                        keysReportChangedCalled = true
+                    }
+                }
+            })
+            // Check for possible key order change
+            if (!keysReportChangedCalled) {
+                if (this._data.size !== orderedData.size) {
+                    // If size differs, keys are definitely modified
+                    this._keysAtom.reportChanged()
+                } else {
+                    const iter1 = this._data.keys()
+                    const iter2 = orderedData.keys()
+                    let next1 = iter1.next()
+                    let next2 = iter2.next()
+                    while (!next1.done) {
+                        if (next1.value !== next2.value) {
+                            this._keysAtom.reportChanged()
+                            break
+                        }
+                        next1 = iter1.next()
+                        next2 = iter2.next()
+                    }
+                }
             }
+            // Use correctly ordered map
+            this._data = orderedData
         })
         return this
     }
 
     get size(): number {
-        return this._keys.length
+        this._keysAtom.reportObserved()
+        return this._data.size
     }
 
     /**
@@ -368,8 +422,9 @@ export class ObservableMap<K = any, V = any>
      */
     toPOJO(): IKeyValueMap<V> {
         const res: IKeyValueMap<V> = {}
-        this._keys.forEach(
-            key => (res[typeof key === "symbol" ? <any>key : stringifyKey(key)] = this.get(key)!)
+        this.forEach(
+            (_, key) =>
+                (res[typeof key === "symbol" ? <any>key : stringifyKey(key)] = this.get(key)!)
         )
         return res
     }
@@ -379,9 +434,7 @@ export class ObservableMap<K = any, V = any>
      * Note that the values migth still be observable. For a deep clone use mobx.toJS.
      */
     toJS(): Map<K, V> {
-        const res: Map<K, V> = new Map()
-        this._keys.forEach(key => res.set(key, this.get(key)!))
-        return res
+        return new Map(this)
     }
 
     toJSON(): IKeyValueMap<V> {
@@ -393,7 +446,9 @@ export class ObservableMap<K = any, V = any>
         return (
             this.name +
             "[{ " +
-            this._keys.map(key => `${stringifyKey(key)}: ${"" + this.get(key)}`).join(", ") +
+            iteratorToArray(this.keys())
+                .map(key => `${stringifyKey(key)}: ${"" + this.get(key)}`)
+                .join(", ") +
             " }]"
         )
     }

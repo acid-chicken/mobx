@@ -18,7 +18,7 @@ _Simple, scalable state management_
 [![OpenCollective](https://opencollective.com/mobx/sponsors/badge.svg)](#sponsors)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 
-<div id='codefund'></div>
+<div id='codefund'></div><div class="re_2020"><a class="re_2020_link" href="https://www.react-europe.org/#slot-2149-workshop-typescript-for-react-and-graphql-devs-with-michel-weststrate" target="_blank" rel="sponsored noopener"><div><div class="re_2020_ad" >Ad</div></div><img src="/img/reacteurope.svg"><span>Join the author of MobX at <b>ReactEurope</b> to learn how to use <span class="link">TypeScript with React</span></span></a></div>
 
 MobX is proudly sponsored by Mendix, Coinbase, Facebook Open Source, Canva, Algolia, Guilded, Auction Frontier, Mantro and TalentPlot for 100\$/month or more! And beyond that by many [individual backers](#backers) and through [one time contributions](https://github.com/mobxjs/mobx/blob/master/sponsors.md).
 
@@ -34,6 +34,7 @@ MobX is proudly sponsored by Mendix, Coinbase, Facebook Open Source, Canva, Algo
 <a href="https://www.codefirst.co.uk/"><img src="assets/codefirst.png" align="center" width="100" title="CodeFirst" alt="CodeFirst"/></a>
 <a href="https://blokt.com/"><img src="assets/blokt.jpg" align="center" width="100" title="Blokt" alt="Blokt"/></a>
 <a href="https://www.bugsnag.com/platforms/react-error-reporting?utm_source=MobX&utm_medium=Website&utm_content=open-source&utm_campaign=2019-community&utm_term=20190913"><img src="assets/bugsnag.jpg" align="center" width="100" title="Bugsnag" alt="Bugsnag"/></a>
+<a href="https://curology.com/blog/tech"><img src="assets/curology.png" align="center" width="100" title="Curology" alt="Curology"/></a>
 
 **🥉Bronze sponsors (\$500+ total contributions):**<br/>
 <a href="https://coinbase.com/"><img src="assets/coinbase.jpeg" align="center" width="100" title="Coinbase" alt="Coinbase" /></a>

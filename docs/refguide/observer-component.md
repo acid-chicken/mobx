@@ -6,7 +6,7 @@ hide_title: true
 
 # @observer
 
-<div id='codefund' ></div>
+<div id='codefund'></div><div class="re_2020"><a class="re_2020_link" href="https://www.react-europe.org/#slot-2149-workshop-typescript-for-react-and-graphql-devs-with-michel-weststrate" target="_blank" rel="sponsored noopener"><div><div class="re_2020_ad" >Ad</div></div><img src="/img/reacteurope.svg"><span>Join the author of MobX at <b>ReactEurope</b> to learn how to use <span class="link">TypeScript with React</span></span></a></div>
 
 <details>
     <summary style="color: white; background:green;padding:5px;margin:5px;border-radius:2px">egghead.io lesson 1: observable & observer</summary>
@@ -54,7 +54,7 @@ class Timer extends React.Component {
 ReactDOM.render(<Timer timerData={timerData} />, document.body)
 ```
 
-Because `observer` automatically tracks any observables that are used (and none more), the `Timer` component above will automatically re-render whever `timerData.secondsPassed` is updated, since it is declared as an observable.
+Because `observer` automatically tracks any observables that are used (and none more), the `Timer` component above will automatically re-render whenever `timerData.secondsPassed` is updated, since it is declared as an observable.
 
 Note that `observer` _only_ subscribes to observables used during the _own_ render of the component. So if observables are passed to child components, those have to be marked as `observer` as well. This also holds for any callback based components.
 

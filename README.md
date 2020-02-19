@@ -7,6 +7,7 @@ _Simple, scalable state management_
 [![CircleCI](https://circleci.com/gh/mobxjs/mobx.svg?style=svg)](https://circleci.com/gh/mobxjs/mobx)
 [![Coverage Status](https://coveralls.io/repos/mobxjs/mobx/badge.svg?branch=master&service=github)](https://coveralls.io/github/mobxjs/mobx?branch=master)
 [![Join the chat at https://gitter.im/mobxjs/mobx](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mobxjs/mobx?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the community on Spectrum](https://withspectrum.github.io/badge/badge.svg)](https://spectrum.chat/mobx)
 [![Discuss MobX on Hashnode](https://hashnode.github.io/badges/mobx.svg)](https://hashnode.com/n/mobx)
 [![OpenCollective](https://opencollective.com/mobx/backers/badge.svg)](#backers)
 [![OpenCollective](https://opencollective.com/mobx/sponsors/badge.svg)](#sponsors)
@@ -26,6 +27,7 @@ MobX is proudly sponsored by Mendix, Coinbase, Facebook Open Source, Canva, Algo
 <a href="https://www.codefirst.co.uk/"><img src="docs/assets/codefirst.png" align="center" width="100" title="CodeFirst" alt="CodeFirst"/></a>
 <a href="https://blokt.com/"><img src="docs/assets/blokt.jpg" align="center" width="100" title="Blokt" alt="Blokt"/></a>
 <a href="https://www.bugsnag.com/platforms/react-error-reporting?utm_source=MobX&utm_medium=Website&utm_content=open-source&utm_campaign=2019-community&utm_term=20190913"><img src="docs/assets/bugsnag.jpg" align="center" width="100" title="Bugsnag" alt="Bugsnag"/></a>
+<a href="https://curology.com/blog/tech"><img src="docs/assets/curology.png" align="center" width="100" title="Curology" alt="Curology"/></a>
 
 **🥉Bronze sponsors (\$500+ total contributions):**<br/>
 <a href="https://coinbase.com/"><img src="docs/assets/coinbase.jpeg" align="center" width="100" title="Coinbase" alt="Coinbase" /></a>
